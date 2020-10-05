@@ -4,6 +4,7 @@ Respository for creating a Docker image that holds default versions of commonly
 used "static files" for web applications, such as:
 
 * favicon.ico
+* Google Site Verification HTML file
 * robots.txt
 * sitemap.xml
 
@@ -40,6 +41,11 @@ This directory contains a subdirectory for each file being served. The files
 are organized in this manner, so that the files can be overridden indvidually
 by a Kubernetes configuration.
 
+The "google-file-upload" directory contains the HTML file for use with the
+"HTML file upload" verification method provided by Google.
+
+See [https://support.google.com/webmasters/answer/9008080](https://support.google.com/webmasters/answer/9008080).
+
 ## Kubernetes Configuration
 
 The following is an example of using the "umd-web-app-static-files" image in
@@ -50,6 +56,7 @@ In the following examples, the name of the application is "foobar". The files
 will be served at the following URLs:
 
 * https://foobar.lib.umd.edu/favicon.ico
+* https://foobar.lib.umd.edu/googlee5878e862cad1cec.html
 * https://foobar.lib.umd.edu/robots.txt
 * https://foobar.lib.umd.edu/sitemap.xml
 
@@ -68,6 +75,7 @@ of files from the "/usr/share/nginx/html" directory. Each file is in it's own
 subdirectory, so it can be overridden by the overlays:
 
 * favicon/favicon.ico
+* google-file-upload/googlee5878e862cad1cec.html
 * robots/robots.txt
 * sitemap/sitemap.xml
 
@@ -182,6 +190,7 @@ spec:
 The base/ingress.yaml file is changed to pass the following URL paths to the "foobar-static-files" pod, instead of to the "foobar-app" pod running the web application:
 
 * /favicon.ico
+* /googlee5878e862cad1cec.html
 * /robots.txt
 * /sitemap.xml
 
@@ -245,6 +254,11 @@ spec:
           servicePort: 8081
 #----- The following lines are added -----
       - path: /favicon.ico
+        pathType: Exact
+        backend:
+          serviceName: foobar-static-files
+          servicePort: 80
+      - path: /googlee5878e862cad1cec.html
         pathType: Exact
         backend:
           serviceName: foobar-static-files
