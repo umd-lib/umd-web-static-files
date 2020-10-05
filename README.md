@@ -14,8 +14,8 @@ mechanism for accessing these files in a Kubernetes stack.
 The "robots.txt" and "sitemap.xml" files are "default closed", i.e., the
 "robots.txt" does not allow crawling, and the "sitemap.xml" is empty.
 
-The files are set up in such a way that a Kubernetes overlay can override each
-file individually.
+The files are provided in separate subdirectories so that a Kubernetes overlay
+can override each file individually.
 
 ## Repository Files
 
@@ -43,7 +43,6 @@ by a Kubernetes configuration.
 
 The "google-file-upload" directory contains the HTML file for use with the
 "HTML file upload" verification method provided by Google.
-
 See [https://support.google.com/webmasters/answer/9008080](https://support.google.com/webmasters/answer/9008080).
 
 ## Kubernetes Configuration
@@ -67,7 +66,8 @@ The "base" overlay sets up the "foobar-static-files" pod running the
 
 ### base/deployment.yaml
 
-The following creates a "foobar-static-files" Deployment, with an associated "foobar-static-files" pod.
+The following creates a "foobar-static-files" Deployment, with an associated
+"foobar-static-files" pod.
 
 The deployment uses the "umd-web-static-files" Nginx Docker image
 (docker.lib.umd.edu/umd-web-app-static-files:latest), which serves a default set
@@ -79,7 +79,7 @@ subdirectory, so it can be overridden by the overlays:
 * robots/robots.txt
 * sitemap/sitemap.xml
 
-The liveness/readiness probes use the "robots.txt" file for determining pod status.
+The liveness probe use the "robots.txt" file for determining pod status.
 
 ```
 ---
@@ -163,7 +163,7 @@ spec:
 
 ### base/networkpolicy.yaml
 
-The following addition to the "base/networkpolicy.yaml" file enables port 80 on
+The following addition to the "base/networkpolicy.yaml" allows enables port 80 on
 the "foobar-static-files" pod to be reached from anywhere:
 
 ```
@@ -198,7 +198,7 @@ All other URL paths go to the "foobar-app" pod.
 
 ----
 
-WARNING
+**WARNING**
 
 In the stock "k8s-new-app" example application, the "base/ingress.yaml" file
 contains the following "rewrite" annotation in "Ingress" configurations:
@@ -214,9 +214,12 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: "/"
 ```
 
-the "rewrite" annotation MUST be removed, as it forcibly rewrites all URL paths passed to the "foobar-static-files" pod to "/" (i.e. "/robots.txt" gets re-written to "/").
+the "rewrite" annotation MUST be removed, as it forcibly rewrites all URL paths
+passed to the "foobar-static-files" pod to "/" (i.e. "/robots.txt" gets
+re-written to "/").
 
-It is not clear if this rewrite rule is actually helpful in any way, so removing it should not cause a problem.
+It is not clear if this rewrite rule is actually helpful in any way, so
+removing it should not cause a problem.
 
 ----
 
@@ -279,7 +282,7 @@ spec:
 ## Overriding Files in overlays
 
 If no changes are needed to the static files provided in the "base", then
-nothing needs to be added to an overlay, as they will get the files in the
+nothing needs to be added to an overlay, as it will get the files in the
 "base" by default.
 
 Files are overridden by using a "configMapGenerator" in the "kustomization.yaml"
@@ -370,4 +373,139 @@ patchesJson6902:
       version: v1
       kind: Deployment
       name: foobar-static-files
+```
+
+## Variations for Special Cases
+
+The above section describes a complete configuration for a web application. The
+following are variations for the above for specific circumstances.
+
+### Public/Staff interface in same application, but on different URLs
+
+Example: ArchivesSpace (https://github.com/umd-lib/k8s-aspace)
+
+In ArchivesSpace, there is a "public" interface at https://archives.lib.umd.edu/
+and a "staff" interface at https://aspace.lib.umd.edu/. Both URLs are served
+from the same web application.
+
+In production, the "robots.txt" for the public interface should allow crawling,
+while the "robots.txt" for the staff interface should not. Similarly, only the
+"sitemap.xml" for the "public" interface should be populated.
+
+This was implemented as follows:
+
+1) In the "base" overlay, created a "base/static-files/extra/" directory, and
+added "robots-public.txt" and "sitemap-public.xml" to it:
+
+```
+base/
+  |-- static-files/
+        |-- extra/
+              |-- robots-public.txt
+              |-- sitemap-public.xml
+```
+
+These file are the same as "robots.txt" and "sitemap.xml" files in
+"umd-web-static-files", as they are "default closed". The actual production
+versions will be in the "prod" overlay.
+
+2) Modified "base/configmap.yaml", adding a "aspace-static-files-extra-config"
+ConfigMap:
+
+```
+---
+# Static files configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aspace-static-files-extra-config
+```
+
+3) Modified "base/deployment.yaml" to include the additional static files:
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspace-static-files
+  ...
+  spec:
+    ...
+    template:
+      ...
+      spec:
+        ...
+        containers
+        ...
+          volumeMounts:
+          - name: static-files-volume-extra
+            mountPath: "/usr/share/nginx/html/extra"
+            readOnly: true
+        volumes:
+          # You set volumes at the Pod level, then mount them into containers inside that Pod
+          - name: static-files-volume-extra
+            configMap:
+              # Provide the name of the ConfigMap you want to mount.
+              name: aspace-static-files-extra-config
+              # An array of keys from the ConfigMap to create as files
+              items:
+              - key: "robots-public.txt"
+                path: "robots-public.txt"
+              - key: "sitemap-public.xml"
+                path: "sitemap-public.xml"
+```
+
+4) Modified "base/kustomization.yaml" to add the additional static files to the "configMapGenerator" stanza:
+
+```
+# Configs to generate and link to the base resources
+configMapGenerator:
+- name: aspace-static-files-extra-config
+  behavior: merge
+  files:
+    - static-files/extra/robots-public.txt
+    - static-files/extra/sitemap-public.xml
+```
+
+5) In "base/ingress.yaml", added the followng rewrite rules to the ArchivesSpace public interface:
+
+```
+# Ingress configuration to expose ArchivesSpace public interface to internet
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: aspace-public-ingress
+  ...
+  annotations:
+    ...
+    # Rewrite rules to force public interface to use "public" versions
+    # of robots.txt and sitemap.xml files
+    #
+    # Needed because "public" and "staff" interfaces are on different URLs
+    # and require different robots.txt and sitemap.xml files
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+        rewrite ^/sitemap.xml$ /extra/sitemap-public.xml break;
+        rewrite ^/robots.txt$ /extra/robots-public.txt break;
+```
+
+6) In the "prod" overlay, add a "static-files/extra/" directory, with the "robots-public.txt" and "sitemap-public.xml" that are actually to be used on the production server:
+
+```
+prod/
+  |-- static-files/
+        |-- extra/
+              |-- robots-public.txt
+              |-- sitemap-public.xml
+```
+
+7) In the "prod/kustomization.yaml" file, add a "configMapGenerator" to merge the files into the "base" overlay (if a "configMapGenerator" stanza already exists, add all the lines except "configMapGenerator"):
+
+```
+configMapGenerator:
+...
+- name: aspace-static-files-extra-config
+  behavior: merge
+  files:
+    - static-files/extra/robots-public.txt
+    - static-files/extra/sitemap-public.xml
 ```
