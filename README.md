@@ -24,7 +24,7 @@ can override each file individually.
 The "Dockerfile" is used to build the Docker image.
 
 ```
-> docker build -t docker.lib.umd.edu/umd-web-app-static-files:<VERSION> -f Dockerfile .
+> docker build -t docker.lib.umd.edu/umd-web-static-files:<VERSION> -f Dockerfile .
 ```
 
 where \<VERSION> is the Docker image version to create.
@@ -47,7 +47,7 @@ See [https://support.google.com/webmasters/answer/9008080](https://support.googl
 
 ## Kubernetes Configuration
 
-The following is an example of using the "umd-web-app-static-files" image in
+The following is an example of using the "umd-web-static-files" image in
 a Kubernetes configuration following the layout in
 ["k8s-new-app"](https://github.com/umd-lib/k8s-new-app).
 
@@ -70,7 +70,7 @@ The following creates a "foobar-static-files" Deployment, with an associated
 "foobar-static-files" pod.
 
 The deployment uses the "umd-web-static-files" Nginx Docker image
-(docker.lib.umd.edu/umd-web-app-static-files:latest), which serves a default set
+(docker.lib.umd.edu/umd-web-static-files:latest), which serves a default set
 of files from the "/usr/share/nginx/html" directory. Each file is in it's own
 subdirectory, so it can be overridden by the overlays:
 
@@ -112,7 +112,7 @@ spec:
         - name: regcred
       # Container Configuration
       containers:
-      - image: docker.lib.umd.edu/umd-web-app-static-files:latest
+      - image: docker.lib.umd.edu/umd-web-static-files:latest
         name: foobar-static-files
         # Resource configuration
         resources:
