@@ -259,23 +259,31 @@ spec:
       - path: /favicon.ico
         pathType: Exact
         backend:
-          serviceName: foobar-static-files
-          servicePort: 80
+          service:
+           name: foobar-static-files
+           port:
+             number: 80
       - path: /googlee5878e862cad1cec.html
         pathType: Exact
         backend:
-          serviceName: foobar-static-files
-          servicePort: 80
+          service:
+            name: foobar-static-files
+            port:
+              number: 80
       - path: /robots.txt
         pathType: Exact
         backend:
-          serviceName: foobar-static-files
-          servicePort: 80
+          service:
+            name: foobar-static-files
+            port:
+              number: 80
       - path: /sitemap.xml
         pathType: Exact
         backend:
-          serviceName: foobar-static-files
-          servicePort: 80
+          service:
+            name: foobar-static-files
+            port:
+              number: 80
 #-----------------------------------------
 ```
 
