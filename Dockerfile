@@ -5,7 +5,7 @@
 # docker build -t docker.lib.umd.edu/umd-web-static-files:<VERSION> -f Dockerfile .
 #
 # where <VERSION> is the Docker image version to create.
-FROM nginx:1.19.2
+FROM nginx:alpine
 
 COPY docker_config/nginx/ /etc/nginx/
 
